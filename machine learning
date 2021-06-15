@@ -1,0 +1,188 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
+import pmdarima as pmd
+plt.style.use('dark_background')
+from statsmodels.tsa.seasonal import seasonal_decompose
+df['Date'] = pd.to_datetime(df.Date,format='%Y-%m-%d')
+df.set_index("Date", drop=False, inplace=True)
+df.drop(["Series","Symbol","Trades","Deliverable Volume","%Deliverble"], axis=1, inplace=True)
+df
+df.isnull().sum() 
+df.VWAP.plot(figsize=(25, 5))
+plt.show()
+sns.kdeplot(df.VWAP, shade=True)
+plt.show()
+df["month"] = df.Date.dt.month
+df["week"] = df.Date.dt.isocalendar().week
+df["day"] = df.Date.dt.isocalendar().day
+df["day_of_week"] = df.Date.dt.dayofweek
+df.drop(['Date'], axis=1, inplace=True)
+df
+y = df['Close']
+df.drop(['VWAP', 'Close'], axis=1, inplace=True)
+df
+seasonal_decompose(df.Open,period=30).plot()
+plt.plot(df.Open)
+s
+mv=[]
+mv=df.Open.rolling(window=2).mean().shift(1)
+plt.plot(mv)
+plt.show()
+mv=[]
+mv=df.Open.rolling(window=1000).mean().shift(1)
+plt.plot(mv)
+plt.show()
+mv=[]
+mv=df.Open.rolling(window=180).mean().shift(1)
+plt.plot(mv)
+plt.show()
+mv=[]
+mv=df.Open.rolling(window=20).mean().shift(1)
+plt.plot(mv)
+plt.show()
+mv=[]
+mv=df.Open.rolling(window=10).mean().shift(1)
+plt.plot(mv)
+plt.show()
+mv=[]
+mv=df.Open.rolling(window=15).mean().shift(1)
+plt.plot(mv)
+plt.show()
+def mae(x,y):
+    resid = abs(x-y)
+    return resid.mean()
+def mse(x,y):
+    resid = (x-y)**2
+    return resid.mean()
+def bias(x,y):
+    resid = x-y
+    return resid.mean()
+def mape(x,y):
+    resid = abs(x-y)
+    ape = resid/(x+0.1)
+    return ape.mean()*100
+from statsmodels.tsa.api import  SimpleExpSmoothing
+from statsmodels.tsa.api import  Holt
+from statsmodels import *
+import statsmodels.tsa.api
+from statsmodels import tsa
+#ts = dir(statsmodels.tsa.api)
+import matplotlib.pyplot as plt
+from warnings import filterwarnings
+filterwarnings('ignore')
+# Simple Exponential Smoothing
+fit1 = SimpleExpSmoothing(df['Open']).fit(smoothing_level=0.2,optimized=False)
+fcast1 = fit1.forecast(4).rename(r'$\alpha=0.2$')
+# plot
+fcast1.plot(marker='o', color='blue', legend=True)
+fit1.fittedvalues.plot(marker='o',  color='blue')
+fit2 = SimpleExpSmoothing(df['Open']).fit(smoothing_level=0.3,optimized=False)
+fcast2 = fit2.forecast(4).rename(r'$\alpha=0.3$')
+# plot
+fcast2.plot(marker='o', color='red', legend=True)
+fit2.fittedvalues.plot(marker='o', color='cyan')
+fit3 = SimpleExpSmoothing(df['Open']).fit(smoothing_level=0.4,optimized=False)
+fcast3 = fit3.forecast(4).rename(r'$\alpha=0.4$')
+# plot
+fcast3.plot(marker='o', color='red', legend=True)
+fit3.fittedvalues.plot(marker='o', color='red')
+fit4 = SimpleExpSmoothing(df['Open']).fit()
+fcast4 = fit4.forecast(4).rename(r'$\alpha=%s$'%fit4.model.params['smoothing_level'])
+# plot
+fcast4.plot(marker='o', color='green', legend=True)
+fit4.fittedvalues.plot(marker='o', color='green')
+plt.show()
+fit_1 = fit1.fittedvalues
+fit_2 = fit2.fittedvalues
+fit_3 = fit3.fittedvalues
+fit_4 = fit4.fittedvalues
+madl = []
+mapdl =[]
+mel = []
+mserl = []
+eval_metric = pd.DataFrame()
+for i in df.columns[1:]:
+    mad = mae(df['Open'],fit_1)
+    madl.append(mad)
+    mapd = mape(df['Open'],fit_2)
+    mapdl.append(mapd)
+    me = bias(df['Open'],fit_3)
+    mel.append(me)
+    mser = mse(df['Open'],fit_4)
+    mserl.append(mser)
+eval_metric['Bias'] = mel
+eval_metric['MAE'] = madl
+eval_metric['MAPE'] = mapdl
+eval_metric['MSE'] = mserl
+eval_metric.index = df.columns[1:]
+alpha = [0.2,0.3,0.4]
+beta = [0.2,0.3,0.4]
+for i in alpha:
+    for j in beta:
+        model = Holt(df.Open,damped_trend=True).fit(smoothing_level=i,smoothing_trend=j)
+        expected = []
+        newlist = model.fittedvalues.values
+        expected.extend(newlist)
+        newdata[str('Albha%sBeta%s'%(i,j))] = expected
+plt.plot(model.fittedvalues)
+from pandas.plotting import autocorrelation_plot
+autocorrelation_plot(df.Open)
+from statsmodels.tsa.stattools import kpss
+def kpss_test(series, **kw):    
+    statistic, p_value, n_lags, critical_values = kpss(series, **kw)
+    # Format Output
+    print(f'KPSS Statistic: {statistic}')
+    print(f'p-value: {p_value}')
+    print(f'num lags: {n_lags}')
+    print('Critial Values:')
+    for key, value in critical_values.items():
+        print(f'   {key} : {value}')
+    print(f'Result: The series is {"not " if p_value < 0.05 else ""}stationary')
+kpss_test(df.Open)
+from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
+plot_acf(np.log(df.Open))
+plt.figure(figsize=(20, 5))
+plt.plot(y)
+plt.plot(y_test, y_pred_lr)
+plt.show()
+rmse_lr_fl = np.sqrt(np.mean(np.power((np.array(y_test)-np.array(y_pred_lr)),2)))
+print("RMSE value - ", rmse_lr_fl)
+ts=TimeSeriesSplit(n_splits=10)
+rmses_lr =[]
+for train_index,test_index in ts.split(X):
+    X_train,X_test = X.values[train_index],X.values[test_index]
+    y_train,y_test = y.values[train_index],y.values[test_index]
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    rmse = get_rmse(y_pred, y_test)
+    rmses_lr.append(rmse)
+    plt.figure(figsize=(20, 5))
+    plt.plot(y)
+    plt.plot(indx[test_index], y_pred)
+    plt.show()
+    print("RMSE value -", rmse)
+    rmse_lr_avg = np.mean(rmses_lr)
+plt.bar(range(10), rmses_lr)
+plt.show()
+print("RMSE value - ", rmse_lr_avg)
+arima_model = pmd.auto_arima(X_train_ar)
+arima_model.summary()
+plt.figure(figsize=(20, 5))
+plt.plot(y)
+plt.plot(X_test_ar.index, y_pred_ar)
+plt.show()
+rmse_arima_fl = get_rmse(X_test_ar, y_pred_ar)
+print("RMSE value - ", rmse_arima_fl)
+plt.figure(figsize=(5, 5))
+plt.bar([ "Linear Regression", "ARIMA"], [ rmse_lr_fl, rmse_arima_fl])
+plt.title("RMSE comparison among different algorithms")
+plt.show()
